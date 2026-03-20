@@ -1,6 +1,6 @@
-# Intel MGBE UNDI Driver Builder
+# Intel mgbe undi Driver Builder
 
-This repository contains a GitHub Actions workflow designed to automatically build and release the **Intel MGBE UNDI UEFI Driver**.
+This repository contains a GitHub Actions workflow designed to automatically build and release the **Intel mgbe undi UEFI Driver**.
 
 It fetches the source code directly from the upstream repository: [intel/iotg-mgbe-undi-driver](https://github.com/intel/iotg-mgbe-undi-driver) and compiles it into EFI executables.
 
@@ -37,7 +37,7 @@ The workflow runs automatically on the **1st of every month at 02:00 UTC+8**.
 ### Manual Trigger
 You can trigger a build manually at any time:
 1.  Go to the **Actions** tab in this repository.
-2.  Select the **Build Intel MGBE UNDI Driver** workflow.
+2.  Select the **Build Intel mgbe undi Driver** workflow.
 3.  Click **Run workflow**.
 4.  (Optional) Enter a specific `Release tag` if you want to override the default versioning.
 
