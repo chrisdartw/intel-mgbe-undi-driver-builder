@@ -68,9 +68,11 @@ jobs:
           source edksetup.sh
           mkdir -p staging
 
+          TOOLCHAIN="GCC5"
+
           # Build DEBUG
           echo "::group::Building DEBUG"
-          build -p IntelUndiPkg/IntelGigUndiPkg.dsc -a X64 -b DEBUG -t GCC5
+          build -p IntelUndiPkg/IntelGigUndiPkg.dsc -a X64 -b DEBUG -t "$TOOLCHAIN"
           find "Build/IntelGigUndiPkg/DEBUG_${TOOLCHAIN}/X64" -name "*.efi" -type f | while read f; do
             cp "$f" "staging/$(basename "${f%.efi}")_X64_DEBUG.efi"
           done
@@ -78,7 +80,7 @@ jobs:
 
           # Build RELEASE
           echo "::group::Building RELEASE"
-          build -p IntelUndiPkg/IntelGigUndiPkg.dsc -a X64 -b RELEASE -t GCC5
+          build -p IntelUndiPkg/IntelGigUndiPkg.dsc -a X64 -b RELEASE -t "$TOOLCHAIN"
           find "Build/IntelGigUndiPkg/RELEASE_${TOOLCHAIN}/X64" -name "*.efi" -type f | while read f; do
             cp "$f" "staging/$(basename "${f%.efi}")_X64_RELEASE.efi"
           done
