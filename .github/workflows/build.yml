@@ -1,0 +1,118 @@
+name: Build Intel mgbe undi Driver
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Release tag'
+        required: false
+        type: string
+
+  schedule:
+    # 2 UTC+8 2:00 AM = 1 UTC 18:00
+    - cron: '0 18 1 * *'
+
+  # push:
+  #   branches: [ main, master ]
+
+jobs:
+  build:
+    name: Build UNDI Driver
+    runs-on: ubuntu-22.04
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout UNDI Driver Source
+        uses: actions/checkout@v5
+        with:
+          repository: intel/iotg-mgbe-undi-driver
+          ref: main
+          fetch-depth: 0
+
+      - name: Get Last Commit Time for Tag
+        id: get_tag
+        run: |
+          LAST_COMMIT_TIME=$(git log -1 --format=%cd --date=format:'%Y%m%d-%H%M%S')
+          
+          if [ -n "${{ github.event.inputs.release_tag }}" ]; then
+            RELEASE_TAG="${{ github.event.inputs.release_tag }}"
+          else
+            RELEASE_TAG="v${LAST_COMMIT_TIME}"
+          fi
+          
+          echo "release_tag=${RELEASE_TAG}" >> $GITHUB_OUTPUT
+          echo "Release tag: ${RELEASE_TAG}"
+
+      - name: Install Build Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential uuid-dev iasl nasm python3 python3-pip p7zip-full
+
+      - name: Build BaseTools
+        run: |
+          echo "::group::Fix BinWrappers Permissions"
+          chmod +x BaseTools/BinWrappers/PosixLike/* || true
+          chmod +x BaseTools/Source/C/bin/* 2>/dev/null || true
+          echo "::endgroup::"
+
+          echo "::group::Building EDK2 BaseTools"
+          make -C BaseTools EXTRA_OPTFLAGS="-Wno-error=vla-parameter"
+          echo "::endgroup::"
+
+      - name: Build DEBUG and RELEASE
+        run: |
+          set -e
+          source edksetup.sh
+          mkdir -p staging
+
+          # Build DEBUG
+          echo "::group::Building DEBUG"
+          build -p IntelUndiPkg/IntelGigUndiPkg.dsc -a X64 -b DEBUG -t GCC5
+          find "Build/IntelGigUndiPkg/DEBUG_${TOOLCHAIN}/X64" -name "*.efi" -type f | while read f; do
+            cp "$f" "staging/$(basename "${f%.efi}")_X64_DEBUG.efi"
+          done
+          echo "::endgroup::"
+
+          # Build RELEASE
+          echo "::group::Building RELEASE"
+          build -p IntelUndiPkg/IntelGigUndiPkg.dsc -a X64 -b RELEASE -t GCC5
+          find "Build/IntelGigUndiPkg/RELEASE_${TOOLCHAIN}/X64" -name "*.efi" -type f | while read f; do
+            cp "$f" "staging/$(basename "${f%.efi}")_X64_RELEASE.efi"
+          done
+          echo "::endgroup::"
+
+          echo "Build artifacts:"
+          ls -la staging/
+
+      - name: Delete Existing Release and Tag (if any)
+        run: |
+          TAG="${{ steps.get_tag.outputs.release_tag }}"
+          echo "Checking for existing release and tag: $TAG"
+          echo "Attempting to delete release if it exists..."
+          gh release delete "$TAG" --yes --repo "$GITHUB_REPOSITORY" || echo "No existing release found or an error occurred."
+          echo "Attempting to delete tag if it exists..."
+          gh api --method DELETE "repos/$GITHUB_REPOSITORY/git/refs/tags/$TAG" || echo -e "\nNo existing tag found or an error occurred."
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.get_tag.outputs.release_tag }}
+          name: Intel mgbe undi Driver ${{ steps.get_tag.outputs.release_tag }}
+          body: |
+            ### Intel mgbe undi Driver Build
+
+            Build from [intel/iotg-mgbe-undi-driver](https://github.com/intel/iotg-mgbe-undi-driver)
+
+            **Assets:**
+            - `*_X64_DEBUG.efi`: DEBUG build EFI driver
+            - `*_X64_RELEASE.efi`: RELEASE build EFI driver
+          files: |
+            staging/*_X64_DEBUG.efi
+            staging/*_X64_RELEASE.efi
+
