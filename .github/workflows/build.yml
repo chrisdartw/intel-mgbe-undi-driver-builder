@@ -1,5 +1,8 @@
 name: Build Intel mgbe undi Driver
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 on:
   workflow_dispatch:
     inputs:
@@ -26,10 +29,10 @@ jobs:
 
     steps:
       - name: Checkout Builder Repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Checkout UNDI Driver Source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           repository: intel/iotg-mgbe-undi-driver
           ref: main
@@ -110,7 +113,7 @@ jobs:
           GITHUB_REPOSITORY: ${{ github.repository }}
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ steps.get_tag.outputs.release_tag }}
           name: Intel mgbe undi Driver ${{ steps.get_tag.outputs.release_tag }}
